@@ -1,0 +1,9 @@
+repos:
+- repo: local
+  hooks:
+    - id: gif
+      name: Create GIF from images
+      language: system
+      entry: make
+      pass_filenames: false
+      files: monde/.*\.jpg$

@@ -1,0 +1,53 @@
+name: Scrape Conseils aux Voyageurs
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+  - cron: '30 23 * * *'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: 0.10.9
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright/
+          key: ${{ runner.os }}-browsers
+
+      - name: Ensure browsers are installed
+        run: uvx playwright install --with-deps
+
+      - name: Scrape
+        run: ./scrape.py
+
+      - name: Install gifsicle
+        run: sudo apt-get install -y gifsicle
+
+      - name: Make GIF
+        run: make
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add --all
+          git commit -m "feat: scrape" || exit 0
+          git pull --rebase
+          git push
