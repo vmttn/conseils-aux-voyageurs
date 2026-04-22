@@ -16,7 +16,9 @@ from furl import furl
 import httpx
 
 URL = furl("https://www.diplomatie.gouv.fr/fr/conseils-aux-voyageurs/")
+
 OUTPUT_DIR = Path(__file__).parent / "monde"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def main() -> None:
@@ -33,15 +35,12 @@ def main() -> None:
         raise RuntimeError("Image not found")
 
     image_url = URL.remove(path=True) / image_path
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = OUTPUT_DIR / Path(image_path).name
-
     response = httpx.get(image_url.url, follow_redirects=True).raise_for_status()
 
     if len(response.content) <= 10_000:
         raise ValueError("Suspicious image size")
 
+    output_path = OUTPUT_DIR / Path(image_path).name
     with output_path.open("wb") as f:
         f.write(response.content)
 
