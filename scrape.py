@@ -27,7 +27,7 @@ def main() -> None:
         context = browser.new_context()
         page = context.new_page()
         page.goto(str(URL))
-        image_locator = page.locator('img[src*="fcvregional_monde.jpg"]')
+        image_locator = page.locator('img[src*="fcv_monde.jpg"]')
         image_path = image_locator.get_attribute("src")
         browser.close()
 
