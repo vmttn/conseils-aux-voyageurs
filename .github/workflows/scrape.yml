@@ -31,7 +31,7 @@ jobs:
           key: ${{ runner.os }}-browsers
 
       - name: Ensure browsers are installed
-        run: uvx playwright install --with-deps
+        run: uvx playwright install --with-deps chromium
 
       - name: Scrape
         run: ./scrape.py
