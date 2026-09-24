@@ -36,10 +36,7 @@ jobs:
       - name: Scrape
         run: ./scrape.py
 
-      - name: Install gifsicle
-        run: sudo apt-get install -y gifsicle
-
-      - name: Make GIF
+      - name: Animate
         run: make
 
       - name: Commit and push

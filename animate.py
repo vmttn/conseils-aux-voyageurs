@@ -23,7 +23,7 @@ import polars as pl
 from PIL import Image
 
 INPUT_DIR = Path(__file__).parent / "monde"
-OUTPUT_FILE = Path(__file__).parent / "animation.gif"
+OUTPUT_FILE = Path(__file__).parent / "animation.webp"
 
 
 EVENTS_DF = pl.DataFrame(
@@ -207,8 +207,8 @@ def main() -> None:
         for path in sorted(INPUT_DIR.glob("*.jpg"))
     ]
 
-    frames = []
-    durations = []
+    frames: list[Image.Image] = []
+    durations: list[int] = []
 
     size = images[0]["image"].size
 
@@ -268,7 +268,9 @@ def main() -> None:
         append_images=frames[1:],
         duration=durations,
         loop=0,
-        disposal=2,
+        lossless=False,
+        quality=75,
+        method=6,
     )
 
 
