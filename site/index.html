@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conseils aux voyageurs</title>
+<meta name="description" content="Archive des cartes « Conseils aux voyageurs » du ministère de l’Europe et des Affaires étrangères.">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --fg: #1b1c20;
+    --muted: #6b6d75;
+    --line: #d9d9d4;
+    --tick: rgba(27, 28, 32, .4);
+    --accent: #4b4f96;
+    --accent-fg: #fff;
+    --frame: #fff;
+    --up: #d7263d;
+    --down: #1b998b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15161a;
+      --fg: #e8e8ea;
+      --muted: #9a9ca5;
+      --line: #2e3037;
+      --tick: rgba(232, 232, 234, .4);
+      --accent: #9da2f0;
+      --accent-fg: #15161a;
+      --frame: #22242a;
+      --up: #ff5a6e;
+      --down: #3ecfbf;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    /* keep map, controls and timeline above the fold */
+    max-width: max(640px, min(1400px, calc((100svh - 240px) * 1.4142 + 32px)));
+    margin: 0 auto;
+    padding: 20px 16px 32px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 1.125rem; font-weight: 600; margin: 0; }
+  .source { display: inline-flex; color: var(--muted); border-radius: 4px; }
+  .source:hover { color: var(--fg); }
+  .source svg { width: 24px; height: 24px; }
+
+  /* Map */
+  .map {
+    position: relative;
+    aspect-ratio: 1.4142;
+    background: var(--frame);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    touch-action: pan-y pinch-zoom;
+  }
+  .map img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 200ms ease;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .map img.shown { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .map img { transition: none; }
+  }
+
+  /* Compare: map A underneath, map B on top clipped at the divider, or a diff canvas */
+  .map { --split: 50%; }
+  .map img.cmp, .map canvas { display: none; opacity: 1; transition: none; }
+  .map canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .map.compare img.cmp { display: block; }
+  .map.compare img:not(.cmp) { display: none; }
+  #cmpB { clip-path: inset(0 0 0 var(--split)); }
+  .map.compare.diff img.cmp { display: none; }
+  .map.compare.diff canvas { display: block; }
+  .divider {
+    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--split);
+    width: 2px;
+    margin-left: -1px;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
+    cursor: ew-resize;
+  }
+  .divider::after {
+    content: "↔";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    margin: -16px 0 0 -16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    color: #1b1c20;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), 0 2px 6px rgba(0, 0, 0, .3);
+  }
+  .label {
+    display: none;
+    position: absolute;
+    top: 8px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: .8125rem;
+    pointer-events: none;
+  }
+  .label-a { left: 8px; }
+  .label-b { right: 8px; }
+  .map.compare:not(.diff) .divider,
+  .map.compare:not(.diff) .label { display: block; }
+  .diff-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: .875rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .diff-info i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
+  .diff-info .up i { background: var(--up); }
+  .diff-info .down i { background: var(--down); }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr; /* keeps the date centred */
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 8px;
+  }
+  .buttons { display: flex; gap: 6px; }
+  button {
+    font: inherit;
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+  button:hover { border-color: var(--muted); }
+  button:disabled { opacity: .35; cursor: default; }
+  #play, button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .modes { display: flex; gap: 6px; justify-self: end; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .now { text-align: center; }
+  #date { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #position { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 12px; }
+  svg { width: 16px; height: 16px; fill: currentColor; }
+
+  /* Timeline */
+  .timeline {
+    position: relative;
+    margin-top: 8px; /* room for the A / B letters */
+    height: 56px;
+    cursor: pointer;
+    touch-action: none;
+    border-radius: 4px;
+  }
+  .ticks { position: absolute; left: 0; right: 0; top: 4px; height: 28px; }
+  .tick {
+    position: absolute;
+    bottom: 0;
+    width: 2px;
+    height: 14px;
+    margin-left: -1px;
+    background: var(--tick);
+    border-radius: 1px;
+  }
+  .tick.a {
+    height: 28px;
+    width: 4px;
+    margin-left: -2px;
+    background: var(--muted);
+  }
+  .tick.current {
+    height: 28px;
+    width: 4px;
+    margin-left: -2px;
+    background: var(--accent);
+  }
+  .timeline.compare .tick.a::after,
+  .timeline.compare .tick.current::after {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: .6875rem;
+    font-weight: 600;
+    line-height: 14px;
+    color: var(--muted);
+  }
+  .timeline.compare .tick.a::after { content: "A"; }
+  .timeline.compare .tick.current::after { content: "B"; color: var(--accent); }
+  .years { position: absolute; left: 0; right: 0; top: 34px; height: 22px; }
+  .year {
+    position: absolute;
+    top: 0;
+    padding-left: 4px;
+    border-left: 1px solid var(--line);
+    font-size: .8125rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    line-height: 22px;
+  }
+  .baseline { position: absolute; left: 0; right: 0; top: 32px; border-top: 1px solid var(--line); }
+  .tooltip {
+    position: absolute;
+    top: -30px;
+    transform: translateX(-50%);
+    background: var(--fg);
+    color: var(--bg);
+    font-size: .8125rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .timeline:hover .tooltip { opacity: 1; }
+
+  .subtitle {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: .875rem;
+  }
+  .subtitle a { color: inherit; }
+
+  @media (max-width: 640px) {
+    .controls { grid-template-columns: 1fr; }
+    .now { order: -1; }
+    .modes { justify-self: start; }
+    .label { font-size: .6875rem; }
+    #date { font-size: 1.25rem; }
+    .year { font-size: .6875rem; padding-left: 2px; }
+    .year.odd { visibility: hidden; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Conseils aux voyageurs</h1>
+      <p class="subtitle">
+        Cartes publiées par le ministère de l’Europe et des Affaires étrangères sur
+        <a href="https://www.diplomatie.gouv.fr/fr/conseils-aux-voyageurs/">France Diplomatie</a>
+      </p>
+    </div>
+    <a class="source" href="https://github.com/vmttn/conseils-aux-voyageurs" aria-label="Code source sur GitHub" title="Code source sur GitHub">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+  </header>
+
+  <div class="map" id="map">
+    <img alt="" id="imgA" class="shown">
+    <img alt="" id="imgB">
+    <img alt="" id="cmpA" class="cmp">
+    <img alt="" id="cmpB" class="cmp">
+    <canvas id="diffCanvas" role="img" aria-label="Différences de niveau entre les deux cartes"></canvas>
+    <span class="label label-a" id="labelA"></span>
+    <span class="label label-b" id="labelB"></span>
+    <div class="divider" id="divider" role="slider" tabindex="0" aria-label="Position du séparateur" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
+  </div>
+  <p class="diff-info" id="diffInfo" hidden>
+    <span class="up"><i></i>Plus risqué : <span id="upPct"></span></span>
+    <span class="down"><i></i>Moins risqué : <span id="downPct"></span></span>
+    <span>des terres comparables</span>
+  </p>
+
+  <div class="controls">
+    <div class="buttons">
+      <button id="prev" aria-label="Carte précédente" title="Précédente (←)"><svg viewBox="0 0 16 16"><path d="M10.5 2 4.5 8l6 6 1.4-1.4L7.3 8l4.6-4.6z"/></svg></button>
+      <button id="next" aria-label="Carte suivante" title="Suivante (→)"><svg viewBox="0 0 16 16"><path d="M5.5 2 4.1 3.4 8.7 8l-4.6 4.6L5.5 14l6-6z"/></svg></button>
+      <button id="play" aria-label="Lecture" title="Lecture (Espace)"><svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2v12l10-6z"/></svg></button>
+    </div>
+    <div class="now" aria-live="polite">
+      <span id="date"></span><span id="position"></span>
+    </div>
+    <div class="modes">
+      <button id="compare" aria-pressed="false" title="Comparer deux dates (C)">Comparer</button>
+      <button id="diff" aria-pressed="false" title="Afficher les différences de niveau (D)" hidden>Différences</button>
+    </div>
+  </div>
+
+  <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Date de la carte">
+    <div class="baseline"></div>
+    <div class="ticks" id="ticks"></div>
+    <div class="years" id="years"></div>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+</main>
+
+<script>
+(async () => {
+  const DAY = 86400000;
+  const PLAY_MS_PER_YEAR = 5000;
+  const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeZone: "UTC" });
+
+  const maps = (await (await fetch("maps.json")).json()).map((m) => ({
+    ...m,
+    time: Date.parse(m.date),
+    label: fmt.format(new Date(m.date)),
+  }));
+
+  const $ = (id) => document.getElementById(id);
+  const imgs = [$("imgA"), $("imgB")];
+  const timeline = $("timeline");
+  const tooltip = $("tooltip");
+
+  const firstYear = new Date(maps[0].time).getUTCFullYear();
+  const lastYear = new Date(maps.at(-1).time).getUTCFullYear();
+  const start = Date.UTC(firstYear, 0, 1);
+  const end = Date.UTC(lastYear + 1, 0, 1);
+  const pct = (t) => ((t - start) / (end - start)) * 100;
+
+  // Timeline
+  const ticks = maps.map((m) => {
+    const el = document.createElement("div");
+    el.className = "tick";
+    el.style.left = `${pct(m.time)}%`;
+    $("ticks").append(el);
+    return el;
+  });
+  for (let y = firstYear; y <= lastYear; y++) {
+    const el = document.createElement("div");
+    el.className = "year" + ((y - firstYear) % 2 ? " odd" : "");
+    el.style.left = `${pct(Date.UTC(y, 0, 1))}%`;
+    el.textContent = y;
+    $("years").append(el);
+  }
+  timeline.setAttribute("aria-valuemin", 1);
+  timeline.setAttribute("aria-valuemax", maps.length);
+
+  const nearest = (t) => {
+    let best = 0;
+    for (let i = 1; i < maps.length; i++) {
+      if (Math.abs(maps[i].time - t) < Math.abs(maps[best].time - t)) best = i;
+    }
+    return best;
+  };
+  const indexAtX = (clientX) => {
+    const r = timeline.getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - r.left, 0), r.width);
+    return nearest(start + (x / r.width) * (end - start));
+  };
+
+  // State
+  let current = -1; // the shown map; in compare mode, map B
+  let a = 0; // compare mode: map A
+  let compare = false;
+  let diffOn = false;
+  let front = 0;
+  let playing = false;
+  let timer = null;
+  let fadeTimer = null;
+  const cache = new Map();
+
+  const preload = (i) => {
+    if (i < 0 || i >= maps.length || cache.has(i)) return;
+    const im = new Image();
+    im.src = maps[i].src;
+    cache.set(i, im);
+  };
+
+  const clamp = (i) => Math.min(Math.max(i, 0), maps.length - 1);
+
+  function show(i) {
+    i = clamp(i);
+    if (compare) return void moveHandle("b", i);
+    if (i === current) return;
+    current = i;
+    render();
+  }
+
+  function render() {
+    renderChrome();
+    return compare ? renderCompare() : renderSingle();
+  }
+
+  const hash = () => compare
+    ? `${maps[a].date}..${maps[current].date}${diffOn ? "+diff" : ""}`
+    : maps[current].date;
+
+  function renderChrome() {
+    const m = maps[current];
+    ticks.forEach((t, j) => {
+      t.classList.toggle("current", j === current);
+      t.classList.toggle("a", compare && j === a);
+    });
+    timeline.classList.toggle("compare", compare);
+    $("map").classList.toggle("compare", compare);
+    if (!compare || !diffOn) {
+      $("map").classList.remove("diff");
+      $("diffInfo").hidden = true;
+    }
+    $("compare").setAttribute("aria-pressed", compare);
+    $("diff").setAttribute("aria-pressed", diffOn);
+    $("diff").hidden = !compare;
+    $("play").disabled = compare;
+    $("date").textContent = compare ? `${maps[a].label} → ${m.label}` : m.label;
+    $("position").textContent = compare ? "" : `${current + 1} / ${maps.length}`;
+    $("prev").disabled = current === 0;
+    $("next").disabled = current === maps.length - 1;
+    timeline.setAttribute("aria-valuenow", current + 1);
+    timeline.setAttribute("aria-valuetext", compare ? `${maps[a].label} à ${m.label}` : m.label);
+    history.replaceState(null, "", `#${hash()}`);
+  }
+
+  async function renderSingle() {
+    const i = current;
+    const m = maps[i];
+
+    // Fade the new map in on top of the old one, which stays fully opaque
+    // underneath, then hide the old one (maps differ slightly in aspect ratio).
+    const back = imgs[1 - front];
+    const old = imgs[front];
+    clearTimeout(fadeTimer);
+    old.style.transition = "none"; // finish any fade in progress
+    back.style.transition = "none";
+    back.classList.remove("shown");
+    back.src = m.src;
+    back.alt = `Carte des conseils aux voyageurs au ${m.label}`;
+    try { await back.decode(); } catch {}
+    if (current !== i) return;
+    $("map").append(back);
+    back.offsetWidth; // commit opacity 0 before fading
+    back.style.transition = "";
+    back.classList.add("shown");
+    front = 1 - front;
+    fadeTimer = setTimeout(() => old.classList.remove("shown"), 250);
+
+    preload(i + 1);
+    preload(i - 1);
+  }
+
+  // Compare: A on the left, B on the right of a divider, or a diff of the two
+  const mapEl = $("map");
+  const divider = $("divider");
+  const diffCanvas = $("diffCanvas");
+  const diffCache = new Map();
+  const percent = new Intl.NumberFormat("fr-FR", {
+    style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1,
+  });
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const rgb = (hex) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+  const ratio = (im) => im.naturalWidth / im.naturalHeight;
+  // The maps changed framing in June 2026; pixels only line up within a layout.
+  const sameLayout = (x, y) => Math.abs(ratio(x) / ratio(y) - 1) < 0.01;
+
+  const loaded = async (i) => {
+    preload(i);
+    const im = cache.get(i);
+    try { await im.decode(); } catch {}
+    return im;
+  };
+
+  // Risk level of a pixel from its hue: 4 formally advised against, 3 advised
+  // against except for compelling reasons, 2 heightened vigilance, 1 normal
+  // vigilance. 0 is anything else (sea, borders, text, France, legend).
+  // Hue is stable across the palette tweaks and JPEG noise of different years.
+  function level(r, g, b) {
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+    if (max < 90 || d < 25) return 0;
+    const s = d / max;
+    const h = 60 * (max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4);
+    if ((h < 14 || h >= 340) && s > 0.5) return 4;
+    if (h < 14 || h >= 340) return 0;
+    if (h < 42 && s > 0.4) return 3;
+    if (h >= 42 && h < 64 && s > 0.15) return 2;
+    if (h >= 64 && h < 110 && s > 0.25) return 1;
+    return 0;
+  }
+
+  function levelsOf(im, w, h) {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(im, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h).data;
+    const lv = new Uint8Array(w * h);
+    for (let p = 0; p < lv.length; p++) lv[p] = level(px[4 * p], px[4 * p + 1], px[4 * p + 2]);
+    return { px, lv };
+  }
+
+  function computeDiff(imA, imB, key) {
+    if (diffCache.has(key)) return diffCache.get(key);
+    const w = 1280;
+    const h = Math.round((w * imB.naturalHeight) / imB.naturalWidth);
+    const A = levelsOf(imA, w, h);
+    const B = levelsOf(imB, w, h);
+
+    let land = 0;
+    const raw = new Uint8Array(w * h); // 1 riskier, 2 safer
+    for (let p = 0; p < raw.length; p++) {
+      const la = A.lv[p];
+      const lb = B.lv[p];
+      if (!la || !lb) continue;
+      land++;
+      if (la !== lb) raw[p] = lb > la ? 1 : 2;
+    }
+
+    // Faded grey map underneath; changed areas on top. Thin slivers along
+    // borders never line up exactly between renders, so drop them.
+    const image = new ImageData(w, h);
+    const d = image.data;
+    const colors = [null, rgb(css("--up")), rgb(css("--down"))];
+    const count = [0, 0, 0];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const p = y * w + x;
+        const o = 4 * p;
+        const grey = 0.3 * B.px[o] + 0.59 * B.px[o + 1] + 0.11 * B.px[o + 2];
+        d[o] = d[o + 1] = d[o + 2] = grey;
+        d[o + 3] = 90;
+        if (!raw[p] || x === 0 || y === 0 || x === w - 1 || y === h - 1) continue;
+        let near = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) if (raw[p + dy * w + dx]) near++;
+        }
+        if (near < 5) continue;
+        const [r, g, b] = colors[raw[p]];
+        d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+        count[raw[p]]++;
+      }
+    }
+
+    const result = { image, w, h, up: count[1] / land, down: count[2] / land };
+    if (diffCache.size >= 8) diffCache.delete(diffCache.keys().next().value);
+    diffCache.set(key, result);
+    return result;
+  }
+
+  async function renderCompare() {
+    const ia = a;
+    const ib = current;
+    const [ma, mb] = [maps[ia], maps[ib]];
+    for (const [id, m] of [["cmpA", ma], ["cmpB", mb]]) {
+      $(id).src = m.src;
+      $(id).alt = `Carte des conseils aux voyageurs au ${m.label}`;
+    }
+    $("labelA").textContent = ma.label;
+    $("labelB").textContent = mb.label;
+
+    const [imA, imB] = await Promise.all([loaded(ia), loaded(ib)]);
+    if (!compare || a !== ia || current !== ib) return;
+
+    const button = $("diff");
+    const unavailable = (why) => {
+      button.disabled = true;
+      button.title = why;
+      if (diffOn) { diffOn = false; renderChrome(); }
+    };
+    if (!sameLayout(imA, imB)) {
+      return unavailable("Cadrage différent (nouvelle maquette 2026) : différences indisponibles");
+    }
+    button.disabled = false;
+    button.title = "Afficher les différences de niveau (D)";
+    if (!diffOn) return;
+
+    let result;
+    try {
+      result = computeDiff(imA, imB, `${ia}-${ib}`);
+    } catch {
+      return unavailable("Différences indisponibles");
+    }
+    diffCanvas.width = result.w;
+    diffCanvas.height = result.h;
+    diffCanvas.getContext("2d").putImageData(result.image, 0, 0);
+    $("upPct").textContent = percent.format(result.up);
+    $("downPct").textContent = percent.format(result.down);
+    mapEl.classList.add("diff");
+    $("diffInfo").hidden = false;
+  }
+
+  // Move handle "a" or "b" to map i, keeping A no later than B. Returns the
+  // handle still being dragged, which flips when the two cross.
+  function moveHandle(handle, i) {
+    i = clamp(i);
+    let ia = handle === "a" ? i : a;
+    let ib = handle === "b" ? i : current;
+    if (ia > ib) {
+      [ia, ib] = [ib, ia];
+      handle = handle === "a" ? "b" : "a";
+    }
+    if (ia !== a || ib !== current) {
+      a = ia;
+      current = ib;
+      render();
+    }
+    return handle;
+  }
+
+  // The handle nearest to map i on the timeline
+  function pickHandle(i) {
+    const t = maps[i].time;
+    const da = Math.abs(t - maps[a].time);
+    const db = Math.abs(t - maps[current].time);
+    return da < db || (da === db && t < maps[a].time) ? "a" : "b";
+  }
+
+  function setCompare(on) {
+    if (on === compare) return;
+    setPlaying(false);
+    compare = on;
+    if (on) a = Math.max(current - 1, 0);
+    render();
+  }
+  function toggleDiff() {
+    diffOn = !diffOn;
+    render();
+  }
+
+  let split = 50;
+  function setSplit(v) {
+    split = Math.min(Math.max(v, 0), 100);
+    mapEl.style.setProperty("--split", `${split}%`);
+    divider.setAttribute("aria-valuenow", Math.round(split));
+  }
+  let splitting = false;
+  const splitAt = (clientX) => {
+    const r = mapEl.getBoundingClientRect();
+    setSplit(((clientX - r.left) / r.width) * 100);
+  };
+  mapEl.addEventListener("pointerdown", (e) => {
+    if (!compare || diffOn) return;
+    splitting = true;
+    mapEl.setPointerCapture(e.pointerId);
+    splitAt(e.clientX);
+  });
+  mapEl.addEventListener("pointermove", (e) => { if (splitting) splitAt(e.clientX); });
+  mapEl.addEventListener("pointerup", () => { splitting = false; });
+  mapEl.addEventListener("pointercancel", () => { splitting = false; });
+  divider.addEventListener("keydown", (e) => {
+    const step = e.shiftKey ? 10 : 2;
+    const next = { ArrowLeft: split - step, ArrowRight: split + step, Home: 0, End: 100 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    setSplit(next);
+  });
+
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    diffCache.clear();
+    if (compare && diffOn) renderCompare();
+  });
+
+  // Playback
+  const holdMs = (i) => {
+    if (i >= maps.length - 1) return 0;
+    const years = (maps[i + 1].time - maps[i].time) / (365 * DAY);
+    return Math.min(Math.max(years * PLAY_MS_PER_YEAR, 400), 3000);
+  };
+  function setPlaying(p) {
+    p = p && !compare;
+    playing = p;
+    clearTimeout(timer);
+    $("play").setAttribute("aria-label", p ? "Pause" : "Lecture");
+    $("playIcon").innerHTML = p
+      ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>'
+      : '<path d="M4 2v12l10-6z"/>';
+    if (p) {
+      maps.forEach((_, i) => preload(i));
+      if (current === maps.length - 1) show(0);
+      step();
+    }
+  }
+  function step() {
+    if (!playing) return;
+    if (current >= maps.length - 1) return setPlaying(false);
+    timer = setTimeout(() => { show(current + 1); step(); }, holdMs(current));
+  }
+  const go = (i) => { setPlaying(false); show(i); };
+
+  // Controls
+  $("prev").onclick = () => go(current - 1);
+  $("next").onclick = () => go(current + 1);
+  $("play").onclick = () => setPlaying(!playing);
+  $("compare").onclick = () => setCompare(!compare);
+  $("diff").onclick = toggleDiff;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("a, #divider") || e.altKey || e.ctrlKey || e.metaKey) return;
+    // In compare mode, Shift+arrows move map A and plain arrows move map B
+    const arrow = (d) => () => (e.shiftKey && compare ? moveHandle("a", a + d) : go(current + d));
+    const actions = {
+      ArrowLeft: arrow(-1),
+      ArrowRight: arrow(1),
+      Home: () => go(0),
+      End: () => go(maps.length - 1),
+      " ": () => setPlaying(!playing),
+      c: () => setCompare(!compare),
+      d: () => { if (compare && !$("diff").disabled) toggleDiff(); },
+    };
+    if (e.key === " " && e.target.closest("button")) return;
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (actions[key]) { e.preventDefault(); actions[key](); }
+  });
+
+  // Timeline scrub
+  let dragging = false;
+  let handle = "b"; // compare mode: the handle being dragged
+  timeline.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    timeline.setPointerCapture(e.pointerId);
+    const i = indexAtX(e.clientX);
+    setPlaying(false);
+    if (compare) handle = moveHandle(pickHandle(i), i);
+    else show(i);
+  });
+  timeline.addEventListener("pointermove", (e) => {
+    const i = indexAtX(e.clientX);
+    tooltip.textContent = maps[i].label;
+    tooltip.style.left = `${pct(maps[i].time)}%`;
+    if (!dragging) return;
+    if (compare) handle = moveHandle(handle, i);
+    else show(i);
+  });
+  timeline.addEventListener("pointerup", () => { dragging = false; });
+  timeline.addEventListener("pointercancel", () => { dragging = false; });
+
+  // Swipe on map
+  let touchX = null;
+  $("map").addEventListener("touchstart", (e) => {
+    touchX = !compare && e.touches.length === 1 ? e.touches[0].clientX : null;
+  }, { passive: true });
+  $("map").addEventListener("touchend", (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 40) go(current + (dx < 0 ? 1 : -1));
+  });
+
+  // Deep links: #DATE, or #DATE..DATE for compare mode, plus +diff for the diff
+  const HASH = /^([\d-]+)(?:\.\.([\d-]+))?(\+diff)?$/;
+  function applyHash() {
+    setPlaying(false);
+    const h = HASH.exec(location.hash.slice(1));
+    const index = (s) => {
+      const t = Date.parse(s);
+      return Number.isNaN(t) ? -1 : nearest(t);
+    };
+    const first = h ? index(h[1]) : -1;
+    const second = h?.[2] ? index(h[2]) : -1;
+    compare = first >= 0 && second >= 0;
+    diffOn = compare && !!h[3];
+    if (compare) {
+      a = Math.min(first, second);
+      current = Math.max(first, second);
+    } else {
+      current = first >= 0 ? first : maps.length - 1;
+    }
+    render();
+  }
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
+})();
+</script>
+</body>
+</html>
