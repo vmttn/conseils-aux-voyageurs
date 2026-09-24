@@ -4,4 +4,4 @@ Moissonnage des cartes "Conseils aux Voyageurs" publiées par le Ministère de l
 
 https://www.diplomatie.gouv.fr/fr/conseils-aux-voyageurs
 
-![](./animation.webp)
+![](https://raw.githubusercontent.com/vmttn/conseils-aux-voyageurs/animation/animation.webp)
