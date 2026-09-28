@@ -1,2 +1,12 @@
+# Python
+*.py[cod]
+__pycache__/
+*.egg-info
+
+# Virtualenv
+.venv/
+venv/
+
+# Build artifacts
 animation.webp
 _site/

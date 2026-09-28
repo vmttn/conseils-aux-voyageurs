@@ -1,0 +1,40 @@
+events:
+  invasion-ukraine:
+    title: Invasion de l'Ukraine par la Russie
+    facts:
+      - date: 2022-02-21
+        fact: La Russie reconnaît l'indépendance des républiques séparatistes de Donetsk et Louhansk.
+      - date: 2022-02-24
+        fact: La Russie envahit l'Ukraine.
+
+updates:
+  2022-02-14:
+    - change: L'Ukraine passe de « vigilance renforcée » à « déconseillé sauf raison impérative ».
+      explanation: La Russie renforce ses troupes aux frontières de l'Ukraine.
+      sources:
+        - https://www.franceinfo.fr/monde/europe/manifestations-en-ukraine/crise-en-ukraine-la-france-deconseille-a-ses-ressortissants-de-se-rendre-dans-le-pays_4959021.html
+      event: invasion-ukraine
+  2022-02-19:
+    - change: La zone « formellement déconseillé » s'étend à l'est de l'Ukraine (Donbass).
+      explanation: Les bombardements se multiplient le long de la ligne de front du Donbass et les séparatistes annoncent l'évacuation des civils.
+      sources:
+        - https://www.franceinfo.fr/monde/europe/manifestations-en-ukraine/crise-en-ukraine-la-france-recommande-a-ses-ressortissants-de-quitter-le-pays_4970727.html
+      event: invasion-ukraine
+  2022-02-23:
+    - change: L'Ukraine passe entièrement en « formellement déconseillé ».
+      explanation: Après la reconnaissance des républiques séparatistes par la Russie, une offensive contre toute l'Ukraine est redoutée.
+      sources:
+        - https://www.franceinfo.fr/monde/europe/manifestations-en-ukraine/les-ressortissants-francais-doivent-quitter-l-ukraine-sans-delai-demande-le-ministere-des-affaires-etrangeres_4977921.html
+      event: invasion-ukraine
+  2022-02-24:
+    - change: La Russie passe en « déconseillé sauf raison impérative ».
+      explanation: La Russie envahit l'Ukraine ; sanctions et fermetures d'espaces aériens compliquent les voyages et le retour depuis la Russie.
+      event: invasion-ukraine
+  2022-02-25:
+    - change: Le Bélarus passe en « déconseillé sauf raison impérative ».
+      explanation: Le Bélarus sert de base arrière à l'offensive russe vers le nord de l'Ukraine.
+      event: invasion-ukraine
+  2022-02-27:
+    - change: Le Bélarus passe en « formellement déconseillé ».
+      explanation: Le Bélarus est engagé aux côtés de la Russie dans la guerre, et des troupes russes y sont stationnées.
+      event: invasion-ukraine

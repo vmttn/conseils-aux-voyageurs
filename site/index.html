@@ -260,6 +260,19 @@
   }
   .subtitle a { color: inherit; }
 
+  /* Updates */
+  .updates {
+    margin-top: 24px;
+    padding: 12px 16px;
+    background: var(--frame);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .updates h2 { margin: 0 0 8px; font-size: .875rem; font-weight: 600; color: var(--muted); }
+  .updates h2:not(:first-child) { margin-top: 16px; }
+  .updates ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .updates .explanation { display: block; margin-top: 2px; font-size: .875rem; color: var(--muted); }
+
   @media (max-width: 640px) {
     .controls { grid-template-columns: 1fr; }
     .now { order: -1; }
@@ -307,6 +320,7 @@
       <button id="prev" aria-label="Carte précédente" title="Précédente (←)"><svg viewBox="0 0 16 16"><path d="M10.5 2 4.5 8l6 6 1.4-1.4L7.3 8l4.6-4.6z"/></svg></button>
       <button id="next" aria-label="Carte suivante" title="Suivante (→)"><svg viewBox="0 0 16 16"><path d="M5.5 2 4.1 3.4 8.7 8l-4.6 4.6L5.5 14l6-6z"/></svg></button>
       <button id="play" aria-label="Lecture" title="Lecture (Espace)"><svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2v12l10-6z"/></svg></button>
+      <button id="speed" aria-label="Vitesse de lecture : ×1" title="Vitesse de lecture (S)">×1</button>
     </div>
     <div class="now" aria-live="polite">
       <span id="date"></span><span id="position"></span>
@@ -324,12 +338,15 @@
     <div class="tooltip" id="tooltip"></div>
   </div>
 
+  <section class="updates" id="updates" aria-live="polite" hidden></section>
+
 </main>
 
 <script>
 (async () => {
   const DAY = 86400000;
   const PLAY_MS_PER_YEAR = 5000;
+  const SPEEDS = [1, 2, 5, 10];
   const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeZone: "UTC" });
 
   const maps = (await (await fetch("maps.json")).json()).map((m) => ({
@@ -387,6 +404,7 @@
   let diffOn = false;
   let front = 0;
   let playing = false;
+  let speed = 0; // index in SPEEDS
   let timer = null;
   let fadeTimer = null;
   const cache = new Map();
@@ -439,7 +457,34 @@
     $("next").disabled = current === maps.length - 1;
     timeline.setAttribute("aria-valuenow", current + 1);
     timeline.setAttribute("aria-valuetext", compare ? `${maps[a].label} à ${m.label}` : m.label);
+    renderUpdates();
     history.replaceState(null, "", `#${hash()}`);
+  }
+
+  // Explanations of the shown map's updates; in compare mode, of those between A and B
+  function renderUpdates() {
+    const lo = compare ? Math.min(a, current) + 1 : current;
+    const hi = compare ? Math.max(a, current) : current;
+    const shown = maps.slice(lo, hi + 1).filter((m) => m.changes);
+    const panel = $("updates");
+    panel.replaceChildren();
+    panel.hidden = !shown.length;
+    for (const m of shown) {
+      const h = document.createElement("h2");
+      h.textContent = m.label;
+      const ul = document.createElement("ul");
+      for (const c of m.changes) {
+        const li = document.createElement("li");
+        const change = document.createElement("span");
+        change.textContent = c.change;
+        const explanation = document.createElement("span");
+        explanation.className = "explanation";
+        explanation.textContent = c.explanation;
+        li.append(change, explanation);
+        ul.append(li);
+      }
+      panel.append(h, ul);
+    }
   }
 
   async function renderSingle() {
@@ -686,8 +731,13 @@
   const holdMs = (i) => {
     if (i >= maps.length - 1) return 0;
     const years = (maps[i + 1].time - maps[i].time) / (365 * DAY);
-    return Math.min(Math.max(years * PLAY_MS_PER_YEAR, 400), 3000);
+    return Math.min(Math.max(years * PLAY_MS_PER_YEAR, 400), 3000) / SPEEDS[speed];
   };
+  function cycleSpeed() {
+    speed = (speed + 1) % SPEEDS.length; // applies from the next step, even while playing
+    $("speed").textContent = `×${SPEEDS[speed]}`;
+    $("speed").setAttribute("aria-label", `Vitesse de lecture : ×${SPEEDS[speed]}`);
+  }
   function setPlaying(p) {
     p = p && !compare;
     playing = p;
@@ -713,6 +763,7 @@
   $("prev").onclick = () => go(current - 1);
   $("next").onclick = () => go(current + 1);
   $("play").onclick = () => setPlaying(!playing);
+  $("speed").onclick = cycleSpeed;
   $("compare").onclick = () => setCompare(!compare);
   $("diff").onclick = toggleDiff;
 
@@ -726,6 +777,7 @@
       Home: () => go(0),
       End: () => go(maps.length - 1),
       " ": () => setPlaying(!playing),
+      s: cycleSpeed,
       c: () => setCompare(!compare),
       d: () => { if (compare && !$("diff").disabled) toggleDiff(); },
     };
